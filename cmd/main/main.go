@@ -19,10 +19,31 @@ func main() {
 	log := setUpLogger(cfg.Env)
 	log.Info("starting url shortener", slog.String("env", cfg.Env))
 
-	_, err := sqlite.New(cfg.StoragePath)
+	storage, err := sqlite.New(cfg.StoragePath)
 	if err != nil {
 		log.Error("could not init storage", err)
 		os.Exit(1)
+	}
+
+	id, err := storage.SaveUrl("https://www.google.com", "google")
+	if err != nil {
+		log.Error("could not save url", err)
+	} else {
+		log.Info("url saved", slog.Int64("id", id))
+	}
+
+	urlToGet, err := storage.GetUrl("fkf")
+	if err != nil {
+		log.Error("could not get url", err)
+	} else {
+		log.Info("url retrieved", slog.String("url", urlToGet))
+	}
+
+	err = storage.DeleteUrl("google")
+	if err != nil {
+		log.Error("could not delete url", err)
+	} else {
+		log.Info("url deleted")
 	}
 }
 
