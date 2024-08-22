@@ -4,7 +4,9 @@ import (
 	"database/sql"
 	"errors"
 	"fmt"
+
 	"github.com/mattn/go-sqlite3"
+
 	"urlShortener/internal/storage"
 )
 
@@ -106,4 +108,25 @@ func (s *Storage) DeleteUrl(alias string) error {
 	}
 
 	return nil
+}
+
+func (s *Storage) AliasExists(alias string) (bool, error) {
+	const op = "storage.sqlite.AliasExists"
+
+	var count int
+
+	stmt, err := s.db.Prepare("SELECT COUNT(url) FROM url WHERE alias = ?")
+	if err != nil {
+		return false, fmt.Errorf("%s: %w", op, err)
+	}
+
+	err = stmt.QueryRow(alias).Scan(&count)
+	if err != nil {
+		if errors.Is(err, sql.ErrNoRows) {
+			return false, nil
+		}
+		return false, fmt.Errorf("%s: %w", op, err)
+	}
+
+	return count > 0, nil
 }

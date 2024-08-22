@@ -1,9 +1,15 @@
 package main
 
 import (
+	"github.com/go-chi/chi/v5"
+	"github.com/go-chi/chi/v5/middleware"
 	"log/slog"
+	"net/http"
 	"os"
+	"urlShortener/internal/http-server/handlers"
+
 	"urlShortener/internal/config"
+	mwLogger "urlShortener/internal/http-server/middleware/logger"
 	"urlShortener/internal/storage/sqlite"
 )
 
@@ -25,26 +31,30 @@ func main() {
 		os.Exit(1)
 	}
 
-	id, err := storage.SaveUrl("https://www.google.com", "google")
-	if err != nil {
-		log.Error("could not save url", err)
-	} else {
-		log.Info("url saved", slog.Int64("id", id))
+	router := chi.NewRouter()
+
+	router.Use(middleware.RequestID)
+	router.Use(mwLogger.New(log))
+	router.Use(middleware.Recoverer)
+	router.Use(middleware.URLFormat)
+
+	router.Post("/url", handlers.SaveUrl(log, storage))
+
+	log.Info("starting server", slog.String("address", cfg.HTTPServer.Address))
+
+	srv := &http.Server{
+		Addr:         cfg.HTTPServer.Address,
+		Handler:      router,
+		ReadTimeout:  cfg.HTTPServer.Timeout,
+		WriteTimeout: cfg.HTTPServer.Timeout,
+		IdleTimeout:  cfg.HTTPServer.IdleTimeout,
 	}
 
-	urlToGet, err := storage.GetUrl("fkf")
-	if err != nil {
-		log.Error("could not get url", err)
-	} else {
-		log.Info("url retrieved", slog.String("url", urlToGet))
+	if err = srv.ListenAndServe(); err != nil {
+		log.Error("could not start server", err)
 	}
 
-	err = storage.DeleteUrl("google")
-	if err != nil {
-		log.Error("could not delete url", err)
-	} else {
-		log.Info("url deleted")
-	}
+	log.Error("server stopped")
 }
 
 func setUpLogger(env string) *slog.Logger {
