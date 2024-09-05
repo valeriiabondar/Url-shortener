@@ -112,7 +112,7 @@ func SaveUrl(log *slog.Logger, urlSaver UrlSaver) http.HandlerFunc {
 
 func GenerateAlias(urlSaver UrlSaver, length int) (string, error) {
 	for {
-		alias := random.New(length)
+		alias := random.NewRandomAlias(length)
 		exists, err := urlSaver.AliasExists(alias)
 		if err != nil {
 			return "", err
