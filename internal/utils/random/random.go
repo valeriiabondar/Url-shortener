@@ -5,7 +5,7 @@ import (
 	"time"
 )
 
-func New(length int) string {
+func NewRandomAlias(length int) string {
 	rnd := rand.New(rand.NewSource(time.Now().UnixNano()))
 
 	chars := []rune("abcdefghijklmnopqrstuvwxyz" +
@@ -13,6 +13,7 @@ func New(length int) string {
 		"0123456789")
 
 	alias := make([]rune, length)
+
 	for i := range alias {
 		alias[i] = chars[rnd.Intn(len(chars))]
 	}
