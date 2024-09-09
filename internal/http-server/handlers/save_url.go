@@ -25,6 +25,7 @@ type Response struct {
 	Alias string `json:"alias"`
 }
 
+//go:generate mockery --name=UrlSaver
 type UrlSaver interface {
 	SaveUrl(urlToSave, alias string) (int64, error)
 	AliasExists(alias string) (bool, error)
