@@ -39,6 +39,7 @@ func main() {
 	router.Use(middleware.URLFormat)
 
 	router.Post("/url", handlers.SaveUrl(log, storage))
+	router.Get("/{alias}", handlers.RedirectUrl(log, storage))
 
 	log.Info("starting server", slog.String("address", cfg.HTTPServer.Address))
 
