@@ -40,6 +40,7 @@ func main() {
 
 	router.Post("/url", handlers.SaveUrl(log, storage))
 	router.Get("/{alias}", handlers.RedirectUrl(log, storage))
+	router.Delete("/{alias}", handlers.DeleteUrl(log, storage))
 
 	log.Info("starting server", slog.String("address", cfg.HTTPServer.Address))
 
