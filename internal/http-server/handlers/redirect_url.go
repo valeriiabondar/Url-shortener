@@ -4,6 +4,7 @@ import (
 	"errors"
 	"log/slog"
 	"net/http"
+	"strings"
 
 	"github.com/go-chi/chi/v5"
 	"github.com/go-chi/chi/v5/middleware"
@@ -28,8 +29,9 @@ func RedirectUrl(log *slog.Logger, urlGetter UrlGetter) http.HandlerFunc {
 
 		alias := chi.URLParam(r, "alias")
 
-		if alias == "" {
+		if strings.TrimSpace(alias) == "" {
 			log.Error("empty alias")
+			w.WriteHeader(http.StatusBadRequest)
 			render.JSON(w, r, response.Error("invalid request"))
 
 			return
@@ -44,7 +46,7 @@ func RedirectUrl(log *slog.Logger, urlGetter UrlGetter) http.HandlerFunc {
 
 				return
 			}
-			log.Error("could not get url", err)
+			log.Error("could not get url", slog.Any("err", err))
 			w.WriteHeader(http.StatusInternalServerError)
 			render.JSON(w, r, response.Error("internal error"))
 

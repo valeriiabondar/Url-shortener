@@ -111,6 +111,7 @@ func SaveUrl(log *slog.Logger, urlSaver UrlSaver) http.HandlerFunc {
 		}
 		log.Info("url saved", slog.Int64("id", id))
 
+		w.WriteHeader(http.StatusCreated)
 		render.JSON(w, r, Response{
 			Response: response.Ok(),
 			Alias:    alias,

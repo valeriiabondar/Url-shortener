@@ -32,7 +32,7 @@ func TestSaveUrl(t *testing.T) {
 			name:           "Success",
 			alias:          "test_alias",
 			url:            "https://google.com",
-			expectedStatus: http.StatusOK,
+			expectedStatus: http.StatusCreated,
 		},
 		{
 			name:           "Empty existing alias",
@@ -49,7 +49,7 @@ func TestSaveUrl(t *testing.T) {
 			alias:          "",
 			url:            "https://google.com",
 			isGenerated:    true,
-			expectedStatus: http.StatusOK,
+			expectedStatus: http.StatusCreated,
 		},
 		{
 			name:           "Existing alias",
@@ -64,7 +64,7 @@ func TestSaveUrl(t *testing.T) {
 			name:           "Non existing alias",
 			alias:          "non_existing_alias",
 			url:            "https://google.com",
-			expectedStatus: http.StatusOK,
+			expectedStatus: http.StatusCreated,
 		},
 		{
 			name:           "Empty URL",
