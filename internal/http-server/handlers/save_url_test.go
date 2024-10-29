@@ -19,65 +19,74 @@ import (
 
 func TestSaveUrl(t *testing.T) {
 	tests := []struct {
-		name        string
-		alias       string
-		url         string
-		respError   string
-		mockError   error
-		aliasExists bool
-		isGenerated bool
+		name           string
+		alias          string
+		url            string
+		respError      string
+		mockError      error
+		aliasExists    bool
+		isGenerated    bool
+		expectedStatus int
 	}{
 		{
-			name:  "Success",
-			alias: "test_alias",
-			url:   "https://google.com",
+			name:           "Success",
+			alias:          "test_alias",
+			url:            "https://google.com",
+			expectedStatus: http.StatusCreated,
 		},
 		{
-			name:        "Empty existing alias",
-			alias:       "",
-			url:         "https://google.com",
-			respError:   "alias already exists",
-			mockError:   storage.ErrUrlExists,
-			aliasExists: true,
-			isGenerated: true,
+			name:           "Empty existing alias",
+			alias:          "",
+			url:            "https://google.com",
+			respError:      "alias already exists",
+			mockError:      storage.ErrAliasExists,
+			aliasExists:    true,
+			isGenerated:    true,
+			expectedStatus: http.StatusConflict,
 		},
 		{
-			name:        "Empty non existing alias",
-			alias:       "",
-			url:         "https://google.com",
-			isGenerated: true,
+			name:           "Empty non existing alias",
+			alias:          "",
+			url:            "https://google.com",
+			isGenerated:    true,
+			expectedStatus: http.StatusCreated,
 		},
 		{
-			name:        "Existing alias",
-			alias:       "existing_alias",
-			url:         "https://google.com",
-			respError:   "alias already exists",
-			mockError:   storage.ErrUrlExists,
-			aliasExists: true,
+			name:           "Existing alias",
+			alias:          "existing_alias",
+			url:            "https://google.com",
+			respError:      "alias already exists",
+			mockError:      storage.ErrAliasExists,
+			aliasExists:    true,
+			expectedStatus: http.StatusConflict,
 		},
 		{
-			name:  "Non existing alias",
-			alias: "non_existing_alias",
-			url:   "https://google.com",
+			name:           "Non existing alias",
+			alias:          "non_existing_alias",
+			url:            "https://google.com",
+			expectedStatus: http.StatusCreated,
 		},
 		{
-			name:      "Empty URL",
-			url:       "",
-			alias:     "some_alias",
-			respError: "validation error: [field Url is a required field]",
+			name:           "Empty URL",
+			url:            "",
+			alias:          "some_alias",
+			respError:      "validation error: [field Url is a required field]",
+			expectedStatus: http.StatusBadRequest,
 		},
 		{
-			name:      "Invalid URL",
-			url:       "some invalid URL",
-			alias:     "some_alias",
-			respError: "validation error: [field Url is not a valid URL]",
+			name:           "Invalid URL",
+			url:            "some invalid URL",
+			alias:          "some_alias",
+			respError:      "validation error: [field Url is not a valid URL]",
+			expectedStatus: http.StatusBadRequest,
 		},
 		{
-			name:      "SaveURL Error",
-			alias:     "test_alias",
-			url:       "https://google.com",
-			respError: "could not save url",
-			mockError: errors.New("unexpected error"),
+			name:           "SaveURL Error",
+			alias:          "test_alias",
+			url:            "https://google.com",
+			respError:      "could not save url",
+			mockError:      errors.New("unexpected error"),
+			expectedStatus: http.StatusInternalServerError,
 		},
 	}
 
@@ -113,7 +122,7 @@ func TestSaveUrl(t *testing.T) {
 			rr := httptest.NewRecorder()
 			handler.ServeHTTP(rr, req)
 
-			require.Equal(t, http.StatusOK, rr.Code)
+			require.Equal(t, tc.expectedStatus, rr.Code)
 
 			body := rr.Body.String()
 

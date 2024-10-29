@@ -35,7 +35,7 @@ const aliasLength = 6
 
 func SaveUrl(log *slog.Logger, urlSaver UrlSaver) http.HandlerFunc {
 	return func(w http.ResponseWriter, r *http.Request) {
-		const op = "handlers.saveFile"
+		const op = "handlers.saveUrl"
 
 		log := log.With(
 			slog.String("op", op),
@@ -48,11 +48,13 @@ func SaveUrl(log *slog.Logger, urlSaver UrlSaver) http.HandlerFunc {
 		if err != nil {
 			if errors.Is(err, io.EOF) {
 				log.Error("empty request body")
+				w.WriteHeader(http.StatusBadRequest)
 				render.JSON(w, r, response.Error("empty request body"))
 
 				return
 			}
-			log.Error("could not decode request", err)
+			log.Error("could not decode request", slog.Any("err", err))
+			w.WriteHeader(http.StatusBadRequest)
 			render.JSON(w, r, response.Error("could not decode request"))
 
 			return
@@ -63,11 +65,13 @@ func SaveUrl(log *slog.Logger, urlSaver UrlSaver) http.HandlerFunc {
 			var validationErr validator.ValidationErrors
 			if errors.As(err, &validationErr) {
 				log.Error("invalid request", slog.Any("errors", validationErr))
+				w.WriteHeader(http.StatusBadRequest)
 				render.JSON(w, r, response.ValidateError(validationErr))
 
 				return
 			} else {
-				log.Error("could not validate request", err)
+				log.Error("could not validate request", slog.Any("err", err))
+				w.WriteHeader(http.StatusBadRequest)
 				render.JSON(w, r, response.Error("could not validate request"))
 
 				return
@@ -81,7 +85,8 @@ func SaveUrl(log *slog.Logger, urlSaver UrlSaver) http.HandlerFunc {
 			alias, genErr = GenerateAlias(urlSaver, aliasLength)
 
 			if genErr != nil {
-				log.Error("could not generate alias", genErr)
+				log.Error("could not generate alias", slog.Any("err", genErr))
+				w.WriteHeader(http.StatusInternalServerError)
 				render.JSON(w, r, response.Error("could not generate alias"))
 
 				return
@@ -91,19 +96,22 @@ func SaveUrl(log *slog.Logger, urlSaver UrlSaver) http.HandlerFunc {
 
 		id, err := urlSaver.SaveUrl(req.Url, alias)
 		if err != nil {
-			if errors.Is(err, storage.ErrUrlExists) {
-				log.Info("url already exists", slog.String("url", req.Url), slog.String("alias", alias))
+			if errors.Is(err, storage.ErrAliasExists) {
+				log.Info("alias already exists", slog.String("url", req.Url), slog.String("alias", alias))
+				w.WriteHeader(http.StatusConflict)
 				render.JSON(w, r, response.Error("alias already exists"))
 
 				return
 			}
-			log.Error("could not save url", err)
+			log.Error("could not save url", slog.Any("err", err))
+			w.WriteHeader(http.StatusInternalServerError)
 			render.JSON(w, r, response.Error("could not save url"))
 
 			return
 		}
 		log.Info("url saved", slog.Int64("id", id))
 
+		w.WriteHeader(http.StatusCreated)
 		render.JSON(w, r, Response{
 			Response: response.Ok(),
 			Alias:    alias,
