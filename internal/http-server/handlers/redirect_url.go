@@ -14,6 +14,7 @@ import (
 	"urlShortener/internal/storage"
 )
 
+//go:generate mockery --name=UrlGetter
 type UrlGetter interface {
 	GetUrl(alias string) (string, error)
 }
