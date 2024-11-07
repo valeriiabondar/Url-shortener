@@ -14,6 +14,7 @@ import (
 	"urlShortener/internal/storage"
 )
 
+//go:generate mockery --name=UrlDeleter
 type UrlDeleter interface {
 	DeleteUrl(alias string) error
 }
