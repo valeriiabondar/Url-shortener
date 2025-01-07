@@ -32,7 +32,7 @@ func DeleteUrl(log *slog.Logger, urlDeleter UrlDeleter) http.HandlerFunc {
 
 		if strings.TrimSpace(alias) == "" {
 			log.Error("empty alias")
-			w.WriteHeader(http.StatusBadRequest)
+			render.Status(r, http.StatusBadRequest)
 			render.JSON(w, r, response.Error("invalid request"))
 			return
 		}
@@ -41,13 +41,13 @@ func DeleteUrl(log *slog.Logger, urlDeleter UrlDeleter) http.HandlerFunc {
 		if err != nil {
 			if errors.Is(err, storage.ErrUrlNotFound) {
 				log.Error("url not found", "alias", alias)
-				w.WriteHeader(http.StatusNotFound)
+				render.Status(r, http.StatusNotFound)
 				render.JSON(w, r, response.Error("url not found"))
 
 				return
 			}
 			log.Error("could not delete url", slog.Any("err", err))
-			w.WriteHeader(http.StatusInternalServerError)
+			render.Status(r, http.StatusInternalServerError)
 			render.JSON(w, r, response.Error("internal error"))
 
 			return

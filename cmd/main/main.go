@@ -1,14 +1,15 @@
 package main
 
 import (
-	"github.com/go-chi/chi/v5"
-	"github.com/go-chi/chi/v5/middleware"
 	"log/slog"
 	"net/http"
 	"os"
-	"urlShortener/internal/http-server/handlers"
+
+	"github.com/go-chi/chi/v5"
+	"github.com/go-chi/chi/v5/middleware"
 
 	"urlShortener/internal/config"
+	"urlShortener/internal/http-server/handlers"
 	mwLogger "urlShortener/internal/http-server/middleware/logger"
 	"urlShortener/internal/storage/sqlite"
 )
@@ -23,7 +24,7 @@ func main() {
 	cfg := config.MustLoad()
 
 	log := setUpLogger(cfg.Env)
-	log.Info("starting url shortener", slog.String("env", cfg.Env))
+	log.Info("starting Url Shortener", slog.String("env", cfg.Env))
 
 	storage, err := sqlite.New(cfg.StoragePath)
 	if err != nil {
