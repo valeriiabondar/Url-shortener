@@ -55,6 +55,7 @@ jobs:
       - name: Create environment file on server
         run: |
           ssh -i deploy_key.pem -o StrictHostKeyChecking=no ${{ env.HOST }} "\
+          sudo su && \
           sudo touch ${{ env.ENV_FILE_PATH }} && \
           sudo chmod 600 ${{ env.ENV_FILE_PATH }} && \
           sudo echo 'CONFIG_PATH=${{ env.CONFIG_PATH }}' > ${{ env.ENV_FILE_PATH }} && \
