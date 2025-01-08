@@ -70,7 +70,7 @@ func TestUrlShortenerSaveRedirect(t *testing.T) {
 			name:   "Invalid Url",
 			url:    "invalid url",
 			alias:  random.NewRandomAlias(10),
-			error:  "validation error: [field Url is not a valid URL]",
+			error:  "validation error: [field Url is not a valid Url]",
 			status: http.StatusBadRequest,
 		},
 		{

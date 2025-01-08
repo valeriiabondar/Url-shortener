@@ -1,9 +1,15 @@
 package main
 
 import (
+	"context"
+	"errors"
 	"log/slog"
 	"net/http"
 	"os"
+	"os/signal"
+	"sync"
+	"syscall"
+	"time"
 
 	"github.com/go-chi/chi/v5"
 	"github.com/go-chi/chi/v5/middleware"
@@ -32,39 +38,23 @@ func main() {
 		os.Exit(1)
 	}
 
-	router := chi.NewRouter()
+	ctx, cancel := context.WithCancel(context.Background())
+	var wg sync.WaitGroup
 
-	router.Use(middleware.RequestID)
-	router.Use(mwLogger.New(log))
-	router.Use(middleware.Recoverer)
-	router.Use(middleware.URLFormat)
+	wg.Add(1)
+	go setUpHTTPServer(ctx, storage, &wg, log, cfg)
 
-	router.Route("/url", func(r chi.Router) {
-		r.Use(middleware.BasicAuth("url-shortener", map[string]string{
-			cfg.HTTPServer.User: cfg.HTTPServer.Password,
-		}))
+	signalCh := make(chan os.Signal, 1)
+	signal.Notify(signalCh, syscall.SIGINT, syscall.SIGTERM)
 
-		r.Post("/", handlers.SaveUrl(log, storage))
-		r.Delete("/{alias}", handlers.DeleteUrl(log, storage))
-	})
+	<-signalCh
 
-	router.Get("/{alias}", handlers.RedirectUrl(log, storage))
+	log.Info("shutting down server gracefully")
+	cancel()
 
-	log.Info("starting server", slog.String("address", cfg.HTTPServer.Address))
+	wg.Wait()
 
-	srv := &http.Server{
-		Addr:         cfg.HTTPServer.Address,
-		Handler:      router,
-		ReadTimeout:  cfg.HTTPServer.Timeout,
-		WriteTimeout: cfg.HTTPServer.Timeout,
-		IdleTimeout:  cfg.HTTPServer.IdleTimeout,
-	}
-
-	if err = srv.ListenAndServe(); err != nil {
-		log.Error("could not start server", err)
-	}
-
-	log.Error("server stopped")
+	log.Info("shutting down is completed")
 }
 
 func setUpLogger(env string) *slog.Logger {
@@ -80,4 +70,55 @@ func setUpLogger(env string) *slog.Logger {
 	}
 
 	return log
+}
+
+func setUpRouter(cfg *config.Config, log *slog.Logger, storage *sqlite.Storage) *chi.Mux {
+	router := chi.NewRouter()
+
+	router.Use(middleware.RequestID)
+	router.Use(mwLogger.New(log))
+	router.Use(middleware.Recoverer)
+	router.Use(middleware.URLFormat)
+
+	router.Route("/url", func(r chi.Router) {
+		r.Use(middleware.BasicAuth("url-shortener", map[string]string{
+			cfg.HTTPServer.User: cfg.HTTPServer.Password,
+		}))
+		r.Post("/", handlers.SaveUrl(log, storage))
+		r.Delete("/{alias}", handlers.DeleteUrl(log, storage))
+	})
+
+	router.Get("/{alias}", handlers.RedirectUrl(log, storage))
+
+	return router
+}
+
+func setUpHTTPServer(ctx context.Context, storage *sqlite.Storage, wg *sync.WaitGroup, log *slog.Logger, cfg *config.Config) {
+	defer wg.Done()
+
+	router := setUpRouter(cfg, log, storage)
+
+	srv := &http.Server{
+		Addr:         cfg.HTTPServer.Address,
+		Handler:      router,
+		ReadTimeout:  cfg.HTTPServer.Timeout,
+		WriteTimeout: cfg.HTTPServer.Timeout,
+		IdleTimeout:  cfg.HTTPServer.IdleTimeout,
+	}
+
+	go func() {
+		log.Info("starting server", slog.String("address", cfg.HTTPServer.Address))
+		if err := srv.ListenAndServe(); err != nil && !errors.Is(err, http.ErrServerClosed) {
+			log.Error("HTTP server error", slog.Any("error", err))
+		}
+	}()
+
+	<-ctx.Done()
+
+	shutdownCtx, cancel := context.WithTimeout(context.Background(), 5*time.Second)
+	defer cancel()
+
+	if err := srv.Shutdown(shutdownCtx); err != nil {
+		log.Error("could not shutdown server", slog.Any("error", err))
+	}
 }
